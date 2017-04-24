@@ -37,6 +37,10 @@ server. The script is called via a cronjob that I have set to run every minute.
 
 ## Server-side software
 
-The server-side software is a combination of a PHP script and a some CSS. It
-used Google Charts to generate the visuals. Full details about Charts can be
-found at <https://developers.google.com/chart/>.
+The server-side software is nothing more than a PHP script. It used Google
+Charts to generate the visuals. Full details about Charts can be found at
+<https://developers.google.com/chart/>.
+
+For the script to work properly, it needs to be able to write to two files:
+`temp_now.txt`, which will contain the latest temperature reading, and
+`temp_history.csv`, which will contain readings of up to the previous 24 hours.
