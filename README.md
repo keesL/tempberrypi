@@ -9,6 +9,10 @@ temperatures reach certain levels.
 3. JavaScript that formats the colleted readings and makes them available via a
 webpage.
 
+The output looks like
+
+![screenshot](screenshot.png "Screenshot")
+
 This project is based on the Adafruit tutorial at
 <https://learn.adafruit.com/adafruits-raspberry-pi-lesson-11-ds18b20-temperature-sensing/hardware>.
 
