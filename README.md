@@ -30,10 +30,10 @@ layout, so I am not going to reproduce it here.
 
 ## Client-side software
 
-The client-side software conists of two Python scripts. The first collects the
-temperature readings from the sensor, and the second one adds it to the log file
-and pushes it out to a web server. The script is called via a cronjob that I
-have set to run every minute.
+The client-side software conists of two Python scripts. The first,
+`sens_temp.py`,  collects the temperature readings from the sensor, and the
+second one, `trigger.py`, adds it to the log file and pushes it out to a web
+server. The script is called via a cronjob that I have set to run every minute.
 
 ## Server-side software
 
