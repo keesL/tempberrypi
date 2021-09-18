@@ -59,7 +59,7 @@ For the script to work properly, it needs to be able to write to two files:
 
 The output looks like
 
-![screenshot](screenshot-temp.png "Screenshot")
+![screenshot](screenshot-temp-humidity.png "Screenshot")
 
 This project is based on the Adafruit tutorial at
 <https://pimylifeup.com/raspberry-pi-humidity-sensor-dht22/>.
