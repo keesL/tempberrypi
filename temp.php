@@ -1,51 +1,53 @@
 <html>
 <?php
-// Are we processing paramters? 
+// Are we processing paramters?
 if (isset($_REQUEST)) {
-    // add a reading
-    if (array_key_exists("temp", $_REQUEST)) {
-        $temp = $_REQUEST['temp'];
+	// add a reading
+	$temp=$hum=$time=0;
+	if (array_key_exists("temp", $_REQUEST)) {
+	    $temp = $_REQUEST['temp'] * 9/5 + 32;
+	}
+	if (array_key_exists("humidity", $_REQUEST)) {
+	    $hum = $_REQUEST['humidity'];
+	}
+	if (array_key_exists("timestamp", $_REQUEST)) {
+	    $time = $_REQUEST['timestamp'];
+	}
 
-        // record current temperature
-        $f = fopen("temp_now.txt", "w");
-        fputs($f, $temp."\n");
-        fclose($f);
+	if (($hum > 0) || ($temp > 0)) {
+		// record current temperature
+		$f = fopen("/var/temperature/temp_now.txt", "w");
+		fputs($f, "$temp,$hum\n");
+		fclose($f);
 
-        // update history
-        $f = fopen('temp_history.csv', 'a');
-        preg_match('/([0-9.]+) degrees F at ([0-9-: ]+)/', $temp, $match);
-        fputs($f, $match[2].','.$match[1]."\n");
-        fclose($f);
+		// update history
+		$f = fopen('/var/temperature/temp_history.csv', 'a');
+		fputs($f,"$time,$temp,$hum\n");
+		fclose($f);
 
-        // limit the duration shown in the history graph
-        exec('/usr/bin/tail -n 1440 temp_history.csv > '.
-            '/tmp/1 && cp /tmp/1 temp_history.csv');
+		// limit the duration shown in the history graph
+		exec('/usr/bin/tail -n 288 /var/temperature/temp_history.csv > '.
+		    '/tmp/1 && cp /tmp/1 /var/temperature/temp_history.csv');
 
-        echo "Ok.";
-        exit();
-    }
+		echo "Ok.";
+		exit();
+	}
 }
 
 // read the current temperature
-$f = fopen("temp_now.txt", "r");
+$f = fopen("/var/temperature/temp_now.txt", "r");
 if ($f === false) {
-    $temp = "unknown";
+    $data = "unknown";
 } else {
-    $temp = fgets($f, 80);
+	$data = explode(",", fgets($f, 80));
+	$temp=$data[0];
+	$hum=$data[1];
 }
 
-preg_match("/([0-9.]+) degrees/", $temp, $matches);
-
-// Chris prefers simple outputs
-if (array_key_exists("mode", $_REQUEST) && $_REQUEST['mode'] == 'simple') {
-    echo "Hello Chris.<p/>";
-    echo $temp;
-    exit();
-}
 ?>
 
-<head> 
-<script type="text/javascript" 
+<head>
+<script type="text/javascript"
     src="https://www.gstatic.com/charts/loader.js"></script>
 <script type="text/javascript">
       google.charts.load('current', {'packages':['gauge', 'corechart']});
@@ -53,9 +55,9 @@ if (array_key_exists("mode", $_REQUEST) && $_REQUEST['mode'] == 'simple') {
 
       function drawChart() {
 
-        var data = google.visualization.arrayToDataTable([
+        var tempdata = google.visualization.arrayToDataTable([
           ['Label', 'Value'],
-          ['Temp', <?php echo $matches[1]; ?>]
+          ['Temp', <?php echo $temp; ?>]
         ]);
 
         var options = {
@@ -65,35 +67,68 @@ if (array_key_exists("mode", $_REQUEST) && $_REQUEST['mode'] == 'simple') {
           greenFrom: 60, greenTo: 80,
           redFrom: 80, redTo: 90,
           yellowColor: '#DC3912',
-          majorTicks: ['50', '55', '60', '65', '70', '75', '80', 
+          majorTicks: ['50', '55', '60', '65', '70', '75', '80',
             '85', '90'],
           minorTicks: 5,
         };
 
-        var chart = new google.visualization.Gauge(
-            document.getElementById('chart_div'));
+        var tempchart = new google.visualization.Gauge(
+            document.getElementById('tempchart_div'));
 
-        chart.draw(data, options);
-      
+	tempchart.draw(tempdata, options);
+
+
+
+
+	
+        var humdata = google.visualization.arrayToDataTable([
+          ['Label', 'Value'],
+          ['Hum.%', <?php echo $hum; ?>]
+        ]);
+
+        var options = {
+          min:0, max:100,
+          width: 350, height: 350,
+          yellowFrom: 0, yellowTo: 50,
+          greenFrom: 50, greenTo: 75,
+          redFrom: 75, redTo: 100,
+          yellowColor: '#DC3912',
+          majorTicks: ['0', '10', '20', '30', '40', '50', '60', '70', '80',
+            '90', '100'],
+          minorTicks: 5,
+        };
+
+        var humchart = new google.visualization.Gauge(
+            document.getElementById('humchart_div'));
+
+        humchart.draw(humdata, options);
+
+
+
+
+
+
+
         var histData = google.visualization.arrayToDataTable([
-        ["Time", "Temperature"],
+        ["Time", "Temperature", "Humidity"],
 <?php
-      $f = fopen('temp_history.csv', 'r');
+// 2021-09-18 02:30:14.272303,80.6,61.79999923706055
+      $f = fopen('/var/temperature/temp_history.csv', 'r');
       while (($line = fgets($f, 80)) !== false) {
         $data = explode(',', $line);
-        $time = explode(' ', $data[0]);
-        $time_data = explode(':', $time[1]);
-        $now = $time_data[1];
-        if ( $now % 20 == 0) {
-            print "[\"$time[1]\", $data[1]],\n";
-        }
+	$time = date_parse($data[0]);
+	if ($time['minute'] % 5 == 0) {
+		printf("[\"%02.0f:%02.0f\", %.1f, %.1f],\n",
+			$time['hour'], $time['minute'],
+			$data[1], $data[2]);
+	}
       }
       fclose($f);
 ?>
       ]);
 
       var histOptions = {
-        title: "Temperature (previous 24 hours)",
+        title: "Temperature and Humidity (previous 24 hours)",
         curveType: "function",
         legend: { position: "none" },
       };
@@ -108,19 +143,18 @@ if (array_key_exists("mode", $_REQUEST) && $_REQUEST['mode'] == 'simple') {
 <body>
 <h1 align="center">TempBerry Pi: Temperature</h1>
 <table><tr>
-<td><div id="chart_div" style="width: 350px; height: 350px;"></div></td>
-<td align="center">
-<div id="history_div" style="width: 600px; height: 400px;"></div>
+<td><div id="tempchart_div" style="width: 400px; height: 400px;"></div></td>
+<td><div id="humchart_div" style="width: 400px; height=400px;"></div></td>
+</tr>
+<tr>
+<td colspan="2"><div id="history_div" style="width: 800px; height: 400px;"></div>
 </td>
 </tr>
 </table>
 <p/>
 <div style="text-align:center; text-style:italic; font-size: 100%;
 margin-top:100px;">
-<i>Last reading at 
-<?php
-$data = explode(' ', $temp);
-echo "$data[4] $data[5]";
-?></div>
+<i>Last reading at
+</div>
 </body>
 </html>
